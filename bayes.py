@@ -79,8 +79,13 @@ class NaiveBayes:
             score += self._calc_text_score(category, counts)
             category_scores[category] = score
 
-        n = sum(category_scores.values())
-        return {k: 1 - (v / n) for k, v in category_scores.items()}
+        base = max(category_scores.values())
+        p = {k: 10 ** (v - base)
+             for k, v in category_scores.items()}
+
+        n = sum(p.values())
+        p = {k: v / n for k, v in p.items()}
+        return p
 
     def _category_p(self, category: str) -> float:
         return self.category_count[category] / sum(self.category_count.values())
@@ -110,7 +115,6 @@ def main():
     df = pd.read_table("./SMSSpamCollection.csv", sep='\t',
                        header=None, names=['class', 'text'])
     df = df.sample(frac=1).reset_index(drop=True)
-    # display(df)
 
     test_df = df[0:test_count]
     df = df[test_count:].reset_index(drop=True)
