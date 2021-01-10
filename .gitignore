@@ -1,3 +1,6 @@
 SMSSpamCollection.csv
 *.txt
 *test*
+__pycache__
+.ipynb_checkpoints
+./text/*
