@@ -11,10 +11,12 @@ wakati = MeCab.Tagger("-Owakati")
 
 class NaiveBayes:
     def __init__(self):
+        # 学習された単語の集合
         self.vocabularies = set()
+        self.word_count = {}
+
         self.category_count = {}
         self.category_words = {}
-        self.word_count = {}
 
     def fit(self, category: str, texts: list):
         if category in self.category_count:
@@ -26,10 +28,11 @@ class NaiveBayes:
         words = self.to_words(concatenated_text)
         counts = self.count_words(words)
 
-        # 5以下は学習しない
+        # 最低でもn回出たら学習する
         min_word_count = 1
-        counts = {k: v for k, v in counts.items() if v >= min_word_count}
-        words = [w for w in words if w in counts.keys()]
+        if min_word_count >= 2:
+            counts = {k: v for k, v in counts.items() if v >= min_word_count}
+            words = [w for w in words if w in set(counts.keys())]
 
         vocabulary = set(words)
         self.vocabularies |= vocabulary
@@ -47,8 +50,8 @@ class NaiveBayes:
         return counts
 
     def to_words(self, text: str) -> list:
-        words = self._normalize_document(text)
-        words = self._separate_text(words)
+        text = self._normalize_document(text)
+        words = self._separate_text(text)
         words = self._remove_dc_words(words)
         return words
 
@@ -66,7 +69,7 @@ class NaiveBayes:
     def _separate_text(self, text: str) -> list:
         return wakati.parse(text).split()
 
-    def classify(self, text: str):
+    def classify(self, text: str) -> dict:
         words = self.to_words(text)
         counts = self.count_words(words)
 
@@ -92,6 +95,7 @@ class NaiveBayes:
         for word in word_counts.keys():
             p = (self._get_word_count(category, word) + 1.0) / evidence
             score += np.log(p) * word_counts[word]
+
         return score
 
     def _get_word_count(self, category: str, word: str) -> float:
