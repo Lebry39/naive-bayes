@@ -148,63 +148,6 @@ class NaiveBayes:
         return 0.0
 
 
-def main():
-    test_count = 1570
-
-    df = pd.read_table("./SMSSpamCollection.csv", sep='\t',
-                       header=None, names=['class', 'text'])
-    df = df.sample(frac=1).reset_index(drop=True)
-
-    test_df = df[0:test_count]
-    df = df[test_count:].reset_index(drop=True)
-
-    obj = NaiveBayes()
-    obj.fit("spam", df["text"][df["class"] == "spam"])
-    obj.fit("ham", df["text"][df["class"] == "ham"])
-
-    missed_spam = 0
-    captured_spam = 0
-
-    passed_ham = 0
-    blocked_ham = 0
-
-    st = time.time()
-
-    N = 0
-    for doc in test_df.iloc:
-        N += 1
-
-        p = obj.classify(doc["text"])
-        spam_rate = p["spam"]
-
-        is_spam = spam_rate > 0.99
-
-        if doc["class"] == "spam":
-            if is_spam:
-                captured_spam += 1
-            else:
-                missed_spam += 1
-        else:
-            if is_spam:
-                blocked_ham += 1
-            else:
-                passed_ham += 1
-
-    print("t=", time.time() - st)
-
-    print("Train: ", len(df))
-    print("SPAM count", len(test_df["text"][test_df["class"] == "spam"]))
-    print("HAM count", len(test_df["text"][test_df["class"] == "ham"]))
-    print()
-
-    print("N:", N)
-    print("正解率", round((passed_ham + captured_spam) / N, 3))
-    print("スパム正解率", "{}/{}".format(captured_spam, (captured_spam + missed_spam)),
-          round(captured_spam / (captured_spam + missed_spam), 3))
-    print("ハムの正解率", "{}/{}".format(passed_ham, (passed_ham + blocked_ham)),
-          round(passed_ham / (passed_ham + blocked_ham), 3))
-
-
 if __name__ == "__main__":
     obj = NaiveBayes()
     obj.fit("マック", [
@@ -221,4 +164,4 @@ if __name__ == "__main__":
     ])
 
     print(obj.classify("ポテト ハンバーガー ジュース"))
-    print(obj.classify("チキン"))
+    print(obj.classify("チキン ビスケット"))
