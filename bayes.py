@@ -8,7 +8,7 @@ import MeCab  # https://pypi.org/project/mecab-python3/
 wakati = MeCab.Tagger("-Owakati -d /var/lib/mecab/dic/ipadic-utf8")
 
 
-class NaiveBayes:
+class NaiveBayes(object):
     def __init__(self):
         # ラプラススムージングのパラメーター
         self.smoothing_a = 0.01
@@ -31,14 +31,14 @@ class NaiveBayes:
 
         # 事前に計算されたワードスコア
         # {"CategoryA": {"wordA": -902, "wordB": -122}, ...}
-        self._calculated_word_scores = {}
+        self._calculated_word_weight = {}
 
     def fit(self, category: str, texts: list):
         if category in self._category_count:
             raise Exception("%s is already registered" % category)
 
         # キャッシュを初期化
-        self._calculated_word_scores = None
+        self._calculated_word_weight = None
         self._category_count[category] = len(texts)
 
         words = []
@@ -55,15 +55,15 @@ class NaiveBayes:
                 self._word_count[w] = 0
             self._word_count[w] += self._category_words[category][w]
 
-    def pre_calculate_word_score(self):
-        self._calculated_word_scores = {}
+    def pre_calculate_word_weight(self):
+        self._calculated_word_weight = {}
 
         for category in self._category_count:
             evidence = float(
                 sum(self._category_words[category].values())
                 + len(self._vocabularies) * self.smoothing_b
             )
-            self._calculated_word_scores[category] = {}
+            self._calculated_word_weight[category] = {}
 
             for word in self._category_words[category]:
                 word_score = np.log10((
@@ -71,10 +71,10 @@ class NaiveBayes:
                     self.smoothing_a
                 ) / evidence)
 
-                self._calculated_word_scores[category][word] = word_score
+                self._calculated_word_weight[category][word] = word_score
 
             nohit_score = np.log10(self.smoothing_a / evidence)
-            self._calculated_word_scores[category][None] = nohit_score
+            self._calculated_word_weight[category][None] = nohit_score
 
     def count_words(self, words: list) -> dict:
         counts = {k: 0 for k in set(words)}
@@ -103,8 +103,8 @@ class NaiveBayes:
         return wakati.parse(text).split()
 
     def classify(self, text: str) -> dict:
-        if self._calculated_word_scores is None:
-            self.pre_calculate_word_score()
+        if self._calculated_word_weight is None:
+            self.pre_calculate_word_weight()
 
         words = self.to_words(text)
         counts = self.count_words(words)
@@ -130,10 +130,10 @@ class NaiveBayes:
         score = 0
         for word in word_counts:
             # Word hit
-            if word in self._calculated_word_scores[category]:
-                word_score = self._calculated_word_scores[category][word]
+            if word in self._calculated_word_weight[category]:
+                word_score = self._calculated_word_weight[category][word]
             else:
-                word_score = self._calculated_word_scores[category][None]
+                word_score = self._calculated_word_weight[category][None]
 
             score += word_score * word_counts[word]
 
@@ -143,6 +143,39 @@ class NaiveBayes:
         if word in self._category_words[category]:
             return float(self._category_words[category][word])
         return 0.0
+
+
+class TWCNB(NaiveBayes):
+    def _calc_bar_score(self, category: str, word: str):
+        other_categories = [
+            c for c in self._category_count.keys() if c != category]
+
+        bar_word_score = 0
+        for cat in other_categories:
+            evidence = float(
+                sum(self._category_words[cat].values())
+                + len(self._vocabularies) * self.smoothing_b
+            )
+
+            bar_word_score -= np.log10((
+                self._get_word_count(cat, word) +
+                self.smoothing_a
+            ) / evidence)
+
+        return bar_word_score
+
+    def pre_calculate_word_score(self):
+        self._calculated_word_weight = {}
+
+        for category in self._category_count:
+
+            self._calculated_word_weight[category] = {}
+            for word in self._category_words[category]:
+                word_score = self._calc_bar_score(category, word)
+                self._calculated_word_weight[category][word] = word_score
+
+            nohit_score = self._calc_bar_score(category, None)
+            self._calculated_word_weight[category][None] = nohit_score
 
 
 if __name__ == "__main__":
