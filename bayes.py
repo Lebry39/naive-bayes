@@ -1,7 +1,4 @@
-import pandas as pd
-import time
 import numpy as np
-import math
 import re
 import unicodedata
 import MeCab  # https://pypi.org/project/mecab-python3/
@@ -163,5 +160,8 @@ if __name__ == "__main__":
         "ハンバーガー チキン チキン ポテト ビスケット ジュース"
     ])
 
+    # {'マック': 0.7531448106571573, 'ケンタッキー': 0.2468551893428426}
     print(obj.classify("ポテト ハンバーガー ジュース"))
+
+    # {'マック': 0.009035030522802552, 'ケンタッキー': 0.9909649694771974}
     print(obj.classify("チキン ビスケット"))
